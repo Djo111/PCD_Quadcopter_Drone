@@ -49,6 +49,16 @@ RF24 radio(4, 5, 18, 19, 23);
 const byte add[6] = "00001";
 float n, e, p;
 
+
+
+
+float map_interval(float value, float in_min, float in_max, float out_min, float out_max) {
+    // Map the value from the input range to the output range
+    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+
 float map_with_step(float value, float low, float high, float tolow, float tohigh, float step) {
   // Calculate the range of the input values and output values
   float from_range = high - low;
@@ -107,12 +117,10 @@ p = n;
 n = millis();
 e = (n - p) / 1000;
 //Serial.println(e * 1000000);
-int throttle = analogRead(14);
+int throttle = analogRead(34);
 int pitch = analogRead(25);
-int kp = analogRead(33);
-// int ki = analogRead(14);
-int kd = analogRead(27);
-values_to_send = map(kd, 0, 4095, 1600, 1000);
+
+values_to_send = map(throttle, 0, 4095, 1600, 1000);
 
 
 
@@ -124,23 +132,11 @@ values_to_send = map(kd, 0, 4095, 1600, 1000);
 //   values_to_send[4]=map_with_step(pitch, 3090, 4095 ,0, -40,1);
 // }
 
-// values_to_send[1] = map_with_step(kp, 0, 4095, 0.0, 5,0.02);
-// values_to_send[2] = map_with_step(ki, 0, 4095, 0.0, 50, 1);
-// values_to_send[3] = map_with_step(kd, 0, 4095, 0, 1, 0.01);
 
 Serial.print(" throttle : ");
 Serial.println(int16_t(values_to_send));
 
 
-// Serial.print(" pitch : ");
-// Serial.print(int16_t(values_to_send[4]));
-// Serial.print(" kp : ");
-// Serial.print(values_to_send[1]);
-// Serial.print(" ki : ");
-// Serial.print(values_to_send[2]);
-// Serial.print(" kd : ");
-// Serial.print(values_to_send[3]);
-//Serial.print("\n");
 
 // lcd.clear(); // clear display
 // lcd.setCursor(0, 0);

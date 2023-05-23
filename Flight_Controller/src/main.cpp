@@ -10,8 +10,8 @@
 #include "WifiReceivedata.h"
 
 //  Defines
-#define CE   4
-#define CSN  5
+#define CE   5
+#define CSN  4
 #define SCK  18
 #define MOSI 23
 #define MISO 19
@@ -84,7 +84,7 @@ void    inline UpdateMotorsValues( const int16_t throttle, const int16_t pitch_p
 //#define DEBUG_MPU
 //#define DEBUG_FILTER_MPU    
 //#define DEBUG_PID_gains
-//#define DEBUG_NRF
+#define DEBUG_NRF
 //#define DEBUG_MOTORS_SPEED
 //#define DEBUG_PID_VALUES
 
@@ -156,28 +156,39 @@ void nrfTask(void *parameter) {
         // Check if the data was sent successfully
         if (status != pdPASS) {
             // Handle the error here
+            Serial.println("data wasn't sent to the Queue!!");
+
         }
       
 #ifdef DEBUG_NRF
-      Serial.print(" throttle : ");
-  Serial.println(int16_t(values_received));
-  // Serial.print(" kp : ");
-  // Serial.print(values_received[1]);
-  // Serial.print(" ki : ");
-  // Serial.print(values_received[2]);
-  // Serial.print(" kd : ");
-  // Serial.print(int16_t(values_received[3]));
-  // Serial.print("\n");
+        delay(1);
+        Serial.print(" throttle : ");
+        Serial.println(int16_t(values_received));
+        // Serial.print(" kp : ");
+        // Serial.print(values_received[1]);
+        // Serial.print(" ki : ");
+        // Serial.print(values_received[2]);
+        // Serial.print(" kd : ");
+        // Serial.print(int16_t(values_received[3]));
+        // Serial.print("\n");
       
      #endif
-     //delay(70);
+     
 }
 else{
 //secure landing
     #ifdef DEBUG_NRF
      Serial.print("no radio available \n");
     #endif
-     NRFdata = 1000;
+     NRFdata_send = 1000;
+     // Send the data to the queue
+      status = xQueueSend(myQueue, &NRFdata_send, portMAX_DELAY);
+
+        // Check if the data was sent successfully
+        if (status != pdPASS) {
+            // Handle the error here
+          Serial.println("can't add data to the Queue in secure landing!!!!");
+        }
      
 }
       
@@ -205,11 +216,11 @@ while (1)
      status = xQueueReceive(myQueue, &NRFdata_receive, portMAX_DELAY);
 
      // Check if the data was received successfully
-     if (status == pdPASS)
-     {
-     // Process the received data here
-     // Serial.printf("Received data: %d\n", NRFdata_receive);
-     }
+    //  if (status == pdPASS)
+    //  {
+    //  // Process the received data here
+    //  // Serial.printf("Received data: %d\n", NRFdata_receive);
+    //  }
 
 
   IMU_signals();
@@ -217,8 +228,8 @@ while (1)
   RatePitch-=RateCalibrationPitch;
   RateYaw-=RateCalibrationYaw;
   
-  Roll = getRoll()-2;
-  Pitch = getPitch()-5;
+  Roll = getRoll()-0.90;
+  Pitch = getPitch()+0.65;
   Yaw = RateYaw;
 #ifdef DEBUG_MPU
   Serial.print("roll: ");
@@ -376,12 +387,13 @@ void pid_controller(float setpoint_roll, float setpoint_pitch, float setpoint_ya
   yaw_error = setpoint_yaw - yaw;
 
   
-  if(roll_error<1 && roll_error>-1)
-       roll_error = 0;
-  if(pitch_error<1 && pitch_error>-1)
-       pitch_error = 0;
-  if(yaw_error<1 && yaw_error>-1)
-       yaw_error = 0;
+  // if(roll_error<1 && roll_error>-1)
+  //      roll_error = 0;
+  // if(pitch_error<1 && pitch_error>-1)
+  //      pitch_error = 0;
+  // if(yaw_error<1 && yaw_error>-1)
+  //      yaw_error = 0;
+
 
 // Calculate the integrals
 /*The integral part should only act if we are close to the
@@ -391,13 +403,12 @@ To integrate we just sum the previous integral value with the
 error multiplied by  the integral constant. This will integrate (increase)
 the value each loop till we reach the 0 point*/
 
- if(roll_error<6 && roll_error>-6)
+  if(roll_error<6 && roll_error>-6)
        roll_integral += PID_ROLL_ki*(roll_error-prev_roll_error)/2;
   if(pitch_error<6 && pitch_error>-6)
        pitch_integral += PID_PITCH_ki*(pitch_error-prev_pitch_error)/2;
   if(yaw_error<6 && yaw_error>-6)
       yaw_integral += PID_YAW_ki*(yaw_error-prev_yaw_error)/2;
-  
   
 
   roll_integral = constrain(roll_integral, -300, 300);
@@ -433,14 +444,14 @@ the value each loop till we reach the 0 point*/
 // Serial.print(PitchPIDOutput);
 // Serial.print(" roll PID output: ");
 // Serial.print(RollPIDOutput);
-Serial.print(" pitch error: ");kp =
-Serial.print(pitch_error);
-Serial.print(" roll error: ");
-Serial.print(roll_error);
-// Serial.print(" pitch integral: ");
-// Serial.print(pitch_integral);
-// Serial.print(" roll integral: ");
-// Serial.print(roll_integral);
+// Serial.print(" pitch error: ");
+// Serial.print(pitch_error);
+// Serial.print(" roll error: ");
+// Serial.print(roll_error);
+Serial.print(" pitch integral: ");
+Serial.print(pitch_integral);
+Serial.print(" roll integral: ");
+Serial.print(roll_integral);
 Serial.print("\n");
 #endif
 #ifdef DEBUG_PID_gains
@@ -464,10 +475,10 @@ void inline UpdateMotorsValues( const int16_t throttle, const int16_t pitch_pid_
                                 const int16_t roll_pid_output, const int16_t yaw_pid_output) {
   
   //check if it works correclly for your mpu orientation 
-  int16_t m0 = throttle - pitch_pid_output - roll_pid_output + yaw_pid_output;
-  int16_t m1 = throttle + pitch_pid_output - roll_pid_output - yaw_pid_output;
-  int16_t m2 = throttle - pitch_pid_output + roll_pid_output - yaw_pid_output;
-  int16_t m3 = throttle + pitch_pid_output + roll_pid_output + yaw_pid_output;
+  int16_t m0 = throttle + pitch_pid_output + roll_pid_output + yaw_pid_output;
+  int16_t m1 = throttle - pitch_pid_output + roll_pid_output - yaw_pid_output;
+  int16_t m2 = throttle + pitch_pid_output - roll_pid_output - yaw_pid_output;
+  int16_t m3 = throttle - pitch_pid_output - roll_pid_output + yaw_pid_output;
   
   //motors values should not be more or less than the max and min throttle
   m0 = constrain(m0, MIN_THROTTLE, MAX_THROTTLE);

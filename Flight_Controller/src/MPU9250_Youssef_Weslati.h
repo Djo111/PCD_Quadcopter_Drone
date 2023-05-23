@@ -73,9 +73,9 @@ void IMU_signals(){
 
   //convert the Acc's measurment units from LSB to g
   //make sure to substract or add the defrance between the Acc values and 1 for each axes(in all 3 direction)!!!!!!! 
-  AccX = ((float)AccXLSB/4096); //4096 is the LSB sensitivity for 8g
-  AccY = ((float)AccYLSB/4096)-0.02;
-  AccZ = ((float)AccZLSB/4096)+0.01;
+  AccX = ((float)AccXLSB/8192)-0.08; //8192 is the LSB sensitivity for 4g
+  AccY = ((float)AccYLSB/8192)-0.08;
+  AccZ = ((float)AccZLSB/8192)+0.15;
   #ifdef DEBUG_Acc
   Serial.print("AccX: ");
   Serial.print(AccX);
@@ -94,9 +94,9 @@ void Gyro_calibration_values(){
   // calibrate the gyro measurments
   for(int i=0; i<2000; i++){
     IMU_signals();
-    RateCalibrationPitch = RatePitch;
-    RateCalibrationRoll = RateRoll;
-    RateCalibrationYaw = RateYaw;
+    RateCalibrationPitch += RatePitch;
+    RateCalibrationRoll += RateRoll;
+    RateCalibrationYaw += RateYaw;
     delay(1);
   }
   //calculate the calibration values
@@ -163,4 +163,3 @@ void setup_mpu9250(){
 //   float Pitch=getPitch();
   
 // }
-
